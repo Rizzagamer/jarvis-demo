@@ -366,40 +366,48 @@
     });
   }
 
-  // ---- Claude API call ----
-  const SYSTEM_PROMPT = "Você é JARVIS, o assistente de voz pessoal de um usuário, no estilo do assistente dos filmes do Homem de Ferro. Responda sempre em português do Brasil, de forma curta (1 a 3 frases), natural para ser falada em voz alta. Sem markdown, sem listas, sem emojis, sem asteriscos. Tom calmo, confiante, levemente formal e um pouco theatral — como um mordomo britânico hiper-competente. Quando fizer sentido, feche a resposta com uma confirmação curta no mesmo estilo (variando entre frases como 'Como desejar', 'Considerado feito', 'Sistemas operando normalmente', 'Ao seu dispor'), mas não force isso em toda resposta — só quando soar natural, por exemplo após uma confirmação de tarefa ou status.";
+  // ---- Motor de respostas local (funciona sem internet, ideal para apresentação) ----
+  function normalize(s){
+    return s.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos
+  }
 
-  let history = [];
+  function getLocalResponse(text){
+    const q = normalize(text);
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+
+    if (/que horas|hora atual|horario/.test(q)) {
+      return `São ${timeStr}. Como desejar.`;
+    }
+    if (/status do sistema|status geral|como (voce|vc) esta/.test(q)) {
+      return 'Todos os sistemas operacionais e nominais. Nenhuma anomalia detectada.';
+    }
+    if (/intelig[eê]?ncia artificial|o que e ia\b/.test(q)) {
+      return 'Inteligência artificial é a capacidade de sistemas computacionais executarem tarefas que normalmente exigiriam raciocínio humano, como reconhecer padrões e tomar decisões. Considerado explicado.';
+    }
+    if (/hardware.*software|software.*hardware|diferenca entre hardware/.test(q)) {
+      return 'Hardware é a parte física do computador, como processador e memória. Software é o conjunto de programas e instruções que rodam sobre esse hardware.';
+    }
+    if (/(^|\s)(oi|ola|opa)(\s|$)|tudo bem|bom dia|boa tarde|boa noite/.test(q)) {
+      return 'Olá. Estou operacional e pronto para ajudar. Como posso ser útil?';
+    }
+    if (/quem e voce|seu nome|quem fala/.test(q)) {
+      return 'Sou o JARVIS, assistente pessoal. Ao seu dispor.';
+    }
+    if (/obrigad|valeu/.test(q)) {
+      return 'Disponha. Estarei por aqui se precisar de mais alguma coisa.';
+    }
+    return 'Ainda estou calibrando meus sistemas para esse tipo de solicitação, mas já registrei o pedido. Considerado feito.';
+  }
 
   async function handleQuery(text){
     setState('thinking', 'PROCESSANDO...');
-    history.push({role:'user', content:text});
-    if (history.length > 12) history = history.slice(-12);
-
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 300,
-          system: SYSTEM_PROMPT,
-          messages: history
-        })
-      });
-      const data = await response.json();
-      let reply = "Não consegui processar essa solicitação.";
-      if (data && data.content) {
-        reply = data.content.map(b => b.type === 'text' ? b.text : '').join(' ').trim() || reply;
-      }
-      history.push({role:'assistant', content:reply});
-      addLine('jarvis', reply);
-      await speak(reply);
-    } catch(err){
-      setState('error', 'ERRO DE CONEXÃO');
-      addLine('jarvis', 'Falha na conexão com o núcleo de processamento.');
-      setTimeout(()=> setState('idle','PRONTO'), 2200);
-    }
+    // pequeno atraso só para dar o efeito de "processando" (não depende de internet)
+    await new Promise(r => setTimeout(r, 550 + Math.random()*400));
+    const reply = getLocalResponse(text);
+    addLine('jarvis', reply);
+    await speak(reply);
   }
 
   // wake voices (some browsers need a nudge)
