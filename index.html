@@ -59,6 +59,74 @@
   @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.3} }
   header .clock{ text-align:right; }
 
+  #settings-btn{
+    background:none; border:1px solid var(--core-dim); border-radius:50%;
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    color:var(--core); flex-shrink:0; margin-left:10px;
+  }
+  #settings-btn svg{ width:15px; height:15px; }
+  #settings-btn path{ fill:var(--core); }
+
+  #settings-panel{
+    display:none; position:fixed; inset:0; z-index:20;
+    background:rgba(3,7,10,.94); backdrop-filter: blur(4px);
+    align-items:center; justify-content:center; padding:24px;
+  }
+  #settings-panel.open{ display:flex; }
+  #settings-card{
+    width:100%; max-width:380px; background:var(--bg-1);
+    border:1px solid var(--core-dim); border-radius:14px; padding:22px;
+    font-family:var(--mono);
+  }
+  #settings-card h3{
+    margin:0 0 14px; font-size:12px; letter-spacing:2px; color:var(--core);
+    text-transform:uppercase; font-weight:600;
+  }
+  #voice-select{
+    width:100%; background:#04090c; border:1.5px solid var(--core-dim);
+    border-radius:10px; padding:10px 12px; color:var(--text-hi);
+    font-family:var(--sans); font-size:14px; margin-bottom:14px;
+  }
+  .settings-row{ display:flex; gap:10px; }
+  .settings-row button{
+    flex:1; padding:11px; border-radius:10px; border:1px solid var(--core-dim);
+    background:transparent; color:var(--core); font-family:var(--sans);
+    font-size:13px; font-weight:600;
+  }
+  .settings-row button.primary{ background:var(--core); color:#03070a; }
+  #settings-hint{ font-size:10.5px; color:var(--text-lo); margin-top:12px; line-height:1.5; letter-spacing:.5px; }
+  #name-input{
+    width:100%; background:#04090c; border:1.5px solid var(--core-dim);
+    border-radius:10px; padding:10px 12px; color:var(--text-hi);
+    font-family:var(--sans); font-size:14px; margin-bottom:14px;
+  }
+
+  #start-overlay{
+    position:fixed; inset:0; z-index:30;
+    background:radial-gradient(ellipse at 50% 30%, var(--bg-1), var(--bg-0) 70%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:22px; text-align:center; padding:30px;
+  }
+  #start-overlay.hidden{ display:none; }
+  #start-overlay .brand{
+    font-family:var(--mono); letter-spacing:4px; color:var(--core);
+    font-size:15px; font-weight:600;
+  }
+  #start-btn{
+    width:96px; height:96px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #0d222a, #04090c 70%);
+    border:1.5px solid var(--core);
+    box-shadow:0 0 24px rgba(79,216,255,.25);
+    display:flex; align-items:center; justify-content:center;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  #start-btn svg{ width:34px; height:34px; }
+  #start-btn path{ fill:var(--core); }
+  #start-overlay .hint2{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px;
+    color:var(--text-lo); text-transform:uppercase;
+  }
+
   main{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
     position:relative; z-index:2;
@@ -159,11 +227,38 @@
 </head>
 <body>
 <div id="grid"></div>
+<div id="start-overlay">
+  <div class="brand">J.A.R.V.I.S.</div>
+  <button id="start-btn" aria-label="Inicializar sistema">
+    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+  <div class="hint2">Toque para inicializar</div>
+</div>
+
 <div id="app" class="state-idle">
   <header>
     <div><span class="status-dot"></span><span class="brand">J.A.R.V.I.S.</span><br><span id="mode-label">SISTEMA EM ESPERA</span></div>
-    <div class="clock" id="clock">00:00:00</div>
+    <div style="display:flex; align-items:flex-start;">
+      <div class="clock" id="clock">00:00:00</div>
+      <button id="settings-btn" aria-label="Configurações de voz">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.14 7.14 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96a7.1 7.1 0 00-1.63-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 00-.6.22L2.7 8.84a.5.5 0 00.12.64l2.03 1.58a7.14 7.14 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.24.1.46.02.6-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z"/></svg>
+      </button>
+    </div>
   </header>
+
+  <div id="settings-panel">
+    <div id="settings-card">
+      <h3>Voz do sistema</h3>
+      <select id="voice-select"></select>
+      <h3 style="margin-top:16px;">Seu nome</h3>
+      <input id="name-input" type="text" placeholder="Ex: Isaac" autocomplete="off">
+      <div class="settings-row">
+        <button id="test-voice-btn" type="button">Testar</button>
+        <button id="close-settings-btn" type="button" class="primary">Pronto</button>
+      </div>
+      <div id="settings-hint">A lista de vozes muda de aparelho para aparelho. Teste aqui antes de apresentar e escolha a que soar melhor no celular/computador que você vai usar.</div>
+    </div>
+  </div>
 
   <main>
     <div id="core-wrap">
@@ -205,6 +300,14 @@
   const hint = document.getElementById('hint');
   const textForm = document.getElementById('text-form');
   const textInput = document.getElementById('text-input');
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  const voiceSelect = document.getElementById('voice-select');
+  const testVoiceBtn = document.getElementById('test-voice-btn');
+  const closeSettingsBtn = document.getElementById('close-settings-btn');
+  const nameInput = document.getElementById('name-input');
+  const startOverlay = document.getElementById('start-overlay');
+  const startBtn = document.getElementById('start-btn');
 
   // clock
   function tick(){
@@ -330,6 +433,78 @@
   document.body.addEventListener('touchstart', unlockTTS, {once:true, passive:true});
   document.body.addEventListener('click', unlockTTS, {once:true});
 
+  // ---- Nome do usuário (salvo no navegador) ----
+  let selectedVoiceURI = null;
+  function getUserName(){
+    return (localStorage.getItem('jarvis-name') || '').trim();
+  }
+  nameInput.value = getUserName();
+  nameInput.addEventListener('input', ()=>{
+    localStorage.setItem('jarvis-name', nameInput.value.trim());
+  });
+
+  function getGreeting(){
+    const h = new Date().getHours();
+    const saudacao = h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite');
+    const name = getUserName();
+    const namePart = name ? ', ' + name : '';
+    return `${saudacao}${namePart}. Sistemas online e operando normalmente. Como posso ajudar?`;
+  }
+
+  // ---- Tela inicial: um único toque libera o áudio no iPhone E dispara a saudação ----
+  startBtn.addEventListener('click', ()=>{
+    startOverlay.classList.add('hidden');
+    setState('thinking', 'PROCESSANDO...');
+    const greeting = getGreeting();
+    addLine('jarvis', greeting);
+    speak(greeting); // chamada síncrona dentro do toque - funciona no iPhone
+  });
+
+  // restaura preferência de voz salva
+  if (localStorage.getItem('jarvis-voice')) {
+    selectedVoiceURI = localStorage.getItem('jarvis-voice');
+  }
+
+  function populateVoiceList(){
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return;
+    const current = voiceSelect.value;
+    voiceSelect.innerHTML = '';
+    // português primeiro, depois o resto, caso o aparelho não tenha nenhuma em pt
+    const pt = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    const rest = voices.filter(v => !(v.lang && v.lang.toLowerCase().startsWith('pt')));
+    [...pt, ...rest].forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI;
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      voiceSelect.appendChild(opt);
+    });
+    // restaura seleção anterior, ou pega a primeira em pt por padrão
+    if (selectedVoiceURI && voices.some(v => v.voiceURI === selectedVoiceURI)) {
+      voiceSelect.value = selectedVoiceURI;
+    } else if (pt.length) {
+      voiceSelect.value = pt[0].voiceURI;
+      selectedVoiceURI = pt[0].voiceURI;
+    }
+  }
+
+  if (window.speechSynthesis) {
+    populateVoiceList();
+    window.speechSynthesis.onvoiceschanged = populateVoiceList;
+  }
+
+  voiceSelect.addEventListener('change', ()=>{
+    selectedVoiceURI = voiceSelect.value;
+    localStorage.setItem('jarvis-voice', selectedVoiceURI);
+  });
+
+  settingsBtn.addEventListener('click', ()=>{
+    populateVoiceList();
+    settingsPanel.classList.add('open');
+  });
+  closeSettingsBtn.addEventListener('click', ()=> settingsPanel.classList.remove('open'));
+  testVoiceBtn.addEventListener('click', ()=> speak('Sistemas de voz operando normalmente. Como desejar.'));
+
   function speak(text){
     if (!window.speechSynthesis) { setState('idle','PRONTO'); return; }
 
@@ -337,16 +512,22 @@
 
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'pt-BR';
-    u.rate = 0.96;
-    u.pitch = 0.72;
     u.volume = 1;
 
     const voices = window.speechSynthesis.getVoices() || [];
-    const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
-    const maleNames = ['felipe','daniel','diego','ricardo','luiz','pedro','male','masculin'];
-    const maleVoice = ptVoices.find(v => maleNames.some(n => v.name.toLowerCase().includes(n)));
-    const chosenVoice = maleVoice || ptVoices[0];
-    if (chosenVoice) u.voice = chosenVoice;
+    const chosenVoice = voices.find(v => v.voiceURI === selectedVoiceURI);
+    if (chosenVoice) {
+      u.voice = chosenVoice;
+      // só grava o tom pra baixo se for uma voz que já parece masculina;
+      // em voz feminina isso costuma soar distorcido.
+      const maleNames = ['felipe','daniel','diego','ricardo','luiz','pedro','male','masculin'];
+      const soundsMale = maleNames.some(n => chosenVoice.name.toLowerCase().includes(n));
+      u.pitch = soundsMale ? 0.82 : 1.0;
+      u.rate = 0.97;
+    } else {
+      u.pitch = 1.0;
+      u.rate = 1.0;
+    }
 
     let done = false;
     const finish = ()=>{
@@ -394,7 +575,8 @@
       return 'Hardware é a parte física do computador, como processador e memória. Software é o conjunto de programas e instruções que rodam sobre esse hardware.';
     }
     if (/(^|\s)(oi|ola|opa)(\s|$)|tudo bem|bom dia|boa tarde|boa noite/.test(q)) {
-      return 'Olá. Estou operacional e pronto para ajudar. Como posso ser útil?';
+      const name = getUserName();
+      return `Olá${name ? ', ' + name : ''}. Estou operacional e pronto para ajudar. Como posso ser útil?`;
     }
     if (/quem e voce|seu nome|quem fala/.test(q)) {
       return 'Sou o JARVIS, assistente pessoal. Ao seu dispor.';
@@ -405,10 +587,6 @@
     return 'Ainda estou calibrando meus sistemas para esse tipo de solicitação, mas já registrei o pedido. Considerado feito.';
   }
 
-  // wake voices (some browsers need a nudge)
-  if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-  }
 
 })();
 </script>
