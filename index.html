@@ -253,7 +253,12 @@
       addLine('you', '> ' + val);
       textInput.value = '';
       textInput.blur();
-      handleQuery(val);
+      setState('thinking', 'PROCESSANDO...');
+      const reply = getLocalResponse(val);
+      addLine('jarvis', reply);
+      // chamada de voz DIRETA e síncrona aqui dentro do handler de toque —
+      // no iPhone, qualquer await/setTimeout antes disso faz o Safari bloquear o áudio.
+      speak(reply);
     });
   } else {
     recognition = new SR();
@@ -282,7 +287,10 @@
     recognition.onresult = function(e){
       const said = e.results[0][0].transcript;
       addLine('you', '> ' + said);
-      handleQuery(said);
+      setState('thinking', 'PROCESSANDO...');
+      const reply = getLocalResponse(said);
+      addLine('jarvis', reply);
+      speak(reply);
     };
   }
 
@@ -322,68 +330,44 @@
   document.body.addEventListener('touchstart', unlockTTS, {once:true, passive:true});
   document.body.addEventListener('click', unlockTTS, {once:true});
 
-  function getVoicesAsync(){
-    return new Promise((resolve)=>{
-      let voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length) { resolve(voices); return; }
-      const onChange = () => {
-        voices = window.speechSynthesis.getVoices();
-        if (voices && voices.length) {
-          window.speechSynthesis.removeEventListener('voiceschanged', onChange);
-          resolve(voices);
-        }
-      };
-      window.speechSynthesis.addEventListener('voiceschanged', onChange);
-      // fallback so we never hang forever if the event never fires
-      setTimeout(() => resolve(window.speechSynthesis.getVoices() || []), 800);
-    });
-  }
+  function speak(text){
+    if (!window.speechSynthesis) { setState('idle','PRONTO'); return; }
 
-  // Mantém o motor de voz do Safari "acordado" - bug conhecido do iOS que
-  // engasga a fala depois de um tempo parado.
-  setInterval(()=>{
-    if (window.speechSynthesis && window.speechSynthesis.speaking) {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }
-  }, 4000);
-
-  async function speak(text){
-    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const voices = await getVoicesAsync();
-    return new Promise((resolve)=>{
-      let done = false;
-      const finish = (label)=>{
-        if (done) return;
-        done = true;
-        clearTimeout(watchdog);
-        setState('idle','PRONTO');
-        resolve();
-      };
-      // rede de segurança: se nada acontecer em 6s, destrava a tela mesmo assim
-      const watchdog = setTimeout(()=> finish('timeout'), 6000);
 
-      // small delay: speaking immediately after cancel() is unreliable on iOS
-      setTimeout(()=>{
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'pt-BR';
-        u.rate = 0.96;
-        u.pitch = 0.72;
-        u.volume = 1;
-        const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
-        const maleNames = ['felipe','daniel','diego','ricardo','luiz','pedro','male','masculin'];
-        const maleVoice = ptVoices.find(v => maleNames.some(n => v.name.toLowerCase().includes(n)));
-        const chosenVoice = maleVoice || ptVoices[0];
-        if (chosenVoice) u.voice = chosenVoice;
-        u.onstart = ()=> setState('speaking', 'RESPONDENDO');
-        u.onend = ()=> finish('end');
-        u.onerror = ()=> finish('error');
-        window.speechSynthesis.speak(u);
-        // iOS occasionally pauses synthesis right after starting; nudge it awake
-        setTimeout(()=>{ if (window.speechSynthesis.paused) window.speechSynthesis.resume(); }, 150);
-      }, 80);
-    });
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'pt-BR';
+    u.rate = 0.96;
+    u.pitch = 0.72;
+    u.volume = 1;
+
+    const voices = window.speechSynthesis.getVoices() || [];
+    const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    const maleNames = ['felipe','daniel','diego','ricardo','luiz','pedro','male','masculin'];
+    const maleVoice = ptVoices.find(v => maleNames.some(n => v.name.toLowerCase().includes(n)));
+    const chosenVoice = maleVoice || ptVoices[0];
+    if (chosenVoice) u.voice = chosenVoice;
+
+    let done = false;
+    const finish = ()=>{
+      if (done) return;
+      done = true;
+      clearTimeout(watchdog);
+      setState('idle','PRONTO');
+    };
+    u.onstart = ()=> setState('speaking', 'RESPONDENDO');
+    u.onend = finish;
+    u.onerror = (ev)=>{
+      // mostra o motivo real em vez de falhar em silêncio
+      addLine('jarvis', '[voz indisponível: ' + (ev && ev.error ? ev.error : 'erro desconhecido') + ' — texto acima é a resposta]');
+      finish();
+    };
+
+    // chamada síncrona - precisa acontecer AGORA, dentro do gesto do usuário
+    window.speechSynthesis.speak(u);
+
+    // rede de segurança: se nada acontecer em 6s, destrava a tela mesmo assim
+    const watchdog = setTimeout(finish, 6000);
   }
 
   // ---- Motor de respostas local (funciona sem internet, ideal para apresentação) ----
@@ -419,15 +403,6 @@
       return 'Disponha. Estarei por aqui se precisar de mais alguma coisa.';
     }
     return 'Ainda estou calibrando meus sistemas para esse tipo de solicitação, mas já registrei o pedido. Considerado feito.';
-  }
-
-  async function handleQuery(text){
-    setState('thinking', 'PROCESSANDO...');
-    // pequeno atraso só para dar o efeito de "processando" (não depende de internet)
-    await new Promise(r => setTimeout(r, 550 + Math.random()*400));
-    const reply = getLocalResponse(text);
-    addLine('jarvis', reply);
-    await speak(reply);
   }
 
   // wake voices (some browsers need a nudge)
