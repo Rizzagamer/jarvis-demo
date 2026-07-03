@@ -339,11 +339,31 @@
     });
   }
 
+  // Mantém o motor de voz do Safari "acordado" - bug conhecido do iOS que
+  // engasga a fala depois de um tempo parado.
+  setInterval(()=>{
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }
+  }, 4000);
+
   async function speak(text){
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const voices = await getVoicesAsync();
     return new Promise((resolve)=>{
+      let done = false;
+      const finish = (label)=>{
+        if (done) return;
+        done = true;
+        clearTimeout(watchdog);
+        setState('idle','PRONTO');
+        resolve();
+      };
+      // rede de segurança: se nada acontecer em 6s, destrava a tela mesmo assim
+      const watchdog = setTimeout(()=> finish('timeout'), 6000);
+
       // small delay: speaking immediately after cancel() is unreliable on iOS
       setTimeout(()=>{
         const u = new SpeechSynthesisUtterance(text);
@@ -357,12 +377,12 @@
         const chosenVoice = maleVoice || ptVoices[0];
         if (chosenVoice) u.voice = chosenVoice;
         u.onstart = ()=> setState('speaking', 'RESPONDENDO');
-        u.onend = ()=> { setState('idle','PRONTO'); resolve(); };
-        u.onerror = ()=> { setState('idle','PRONTO'); resolve(); };
+        u.onend = ()=> finish('end');
+        u.onerror = ()=> finish('error');
         window.speechSynthesis.speak(u);
         // iOS occasionally pauses synthesis right after starting; nudge it awake
         setTimeout(()=>{ if (window.speechSynthesis.paused) window.speechSynthesis.resume(); }, 150);
-      }, 60);
+      }, 80);
     });
   }
 
